@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: "MicroArchBench: CPU Microbenchmark Suite"
+message: "If you use this software in research, please cite it using this metadata."
+type: software
+authors:
+  - family-names: "Badejo"
+    given-names: "Olajide"
+repository-code: "https://github.com/Olajide-Badejo/MicroArchBench"
+license: "MIT"
+abstract: >
+  Cross-architecture CPU microbenchmark suite for latency, bandwidth, and peak
+  FLOPS characterization with roofline modeling and analytical GEMM tiling.
+keywords:
+  - microbenchmark
+  - roofline
+  - cache
+  - memory bandwidth
+  - gemm
+  - performance engineering

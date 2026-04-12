@@ -1,0 +1,303 @@
+# .github/workflows/ci.yml
+# Continuous integration for the CPU Microbenchmark Suite.
+#
+# Jobs:
+#   build-test-x86   -- builds with GCC and Clang on Ubuntu x86-64, runs ctest
+#   build-aarch64    -- cross-compiles for AArch64 (compile-only, no hardware run)
+#   python-lint      -- checks Python scripts with pylint and runs a dry-run
+#                       of the post-processing scripts with synthetic data
+#
+# The benchmarks themselves are NOT run in CI because:
+#   - GitHub-hosted runners do not provide fixed-frequency CPUs.
+#   - perf_event_open requires elevated privileges not available in runners.
+#   - Benchmark numbers on shared VMs are meaningless.
+#
+# CI only verifies that the code compiles cleanly and the tests pass.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: build and test on x86-64 with GCC and Clang
+  # --------------------------------------------------------------------------
+  build-test-x86:
+    name: Build + Test (${{ matrix.compiler }})
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc-12
+            cc: gcc-12
+            cxx: g++-12
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+          - compiler: clang-15
+            cc: clang-15
+            cxx: clang++-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          # Install the compiler from the matrix. For clang-15 on Ubuntu 22.04
+          # the package is available in the default repos. For OpenMP on Clang
+          # we also need libomp-dev.
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libnuma-dev \
+            libomp-dev
+          # Install the compiler; allow failure on clang since some runners
+          # already have a recent clang under a different name.
+          sudo apt-get install -y ${{ matrix.compiler }} || true
+          # Verify the CXX binary resolves
+          ${{ matrix.cxx }} --version
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ matrix.compiler }}-
+
+      - name: Configure (Release, AVX2, no perf counters -- not available in CI)
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DBENCH_ENABLE_AVX2=ON \
+            -DBENCH_ENABLE_FMA=ON \
+            -DBENCH_ENABLE_PERF=OFF \
+            -DBENCH_WITH_NUMA=AUTO \
+            -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -G Ninja
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Run correctness tests
+        run: ctest --test-dir build -V --output-on-failure
+
+      - name: Verify binaries link correctly
+        run: |
+          file build/pointer_chase
+          file build/stream_bench
+          file build/peak_flops
+          file build/gemm_tile_bench
+
+  # --------------------------------------------------------------------------
+  # Job 2: Debug build with sanitizers (ASan + UBSan)
+  # --------------------------------------------------------------------------
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gcc-12 g++-12 cmake ninja-build libnuma-dev
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build-san/_deps
+          key: deps-sanitizers-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-sanitizers-
+
+      - name: Configure (Debug + sanitizers)
+        run: |
+          cmake -B build-san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DBENCH_ENABLE_AVX2=ON \
+            -DBENCH_ENABLE_FMA=ON \
+            -DBENCH_ENABLE_PERF=OFF \
+            -DBENCH_WITH_NUMA=OFF \
+            -DBENCH_SANITIZE=ON \
+            -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON \
+            -G Ninja
+
+      - name: Build
+        run: cmake --build build-san -j$(nproc)
+
+      - name: Run correctness tests under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: ctest --test-dir build-san -V --output-on-failure
+
+  # --------------------------------------------------------------------------
+  # Job 3: Cross-compile for AArch64 (compile-only verification)
+  # --------------------------------------------------------------------------
+  build-aarch64:
+    name: Cross-compile AArch64
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cross-toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            cmake \
+            ninja-build
+
+      - name: Cache FetchContent dependencies (AArch64)
+        uses: actions/cache@v4
+        with:
+          path: build-aarch64/_deps
+          key: deps-aarch64-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-aarch64-
+
+      - name: Configure (AArch64 cross-compile)
+        run: |
+          cmake -B build-aarch64 \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBENCH_ENABLE_NEON=ON \
+            -DBENCH_ENABLE_PERF=OFF \
+            -DBENCH_WITH_NUMA=OFF \
+            -DBENCHMARK_DOWNLOAD_DEPENDENCIES=ON \
+            -G Ninja
+
+      - name: Build (cross-compile, no execution)
+        run: cmake --build build-aarch64 -j$(nproc)
+
+      - name: Verify ELF architecture
+        run: |
+          file build-aarch64/pointer_chase | grep -i aarch64
+          file build-aarch64/stream_bench  | grep -i aarch64
+          file build-aarch64/peak_flops    | grep -i aarch64
+
+  # --------------------------------------------------------------------------
+  # Job 4: Python linting and dry-run of post-processing scripts
+  # --------------------------------------------------------------------------
+  python:
+    name: Python scripts
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pylint
+
+      - name: Lint scripts
+        run: |
+          pylint scripts/parse_perf.py  --disable=C,R --fail-under=7.0
+          pylint scripts/roofline.py    --disable=C,R --fail-under=7.0
+          pylint scripts/tile_predict.py --disable=C,R --fail-under=7.0
+
+      - name: Dry-run parse_perf.py with synthetic data
+        run: |
+          mkdir -p /tmp/fake_results
+          # Write minimal Google Benchmark JSON so the parser does not crash
+          python3 - <<'EOF'
+          import json, pathlib, subprocess, sys
+
+          fake = {
+              "benchmarks": [
+                  {"name": "BM_PointerChase/4096",   "label": "L1",   "ns_per_load": 1.4},
+                  {"name": "BM_PointerChase/262144",  "label": "L2",   "ns_per_load": 4.0},
+                  {"name": "BM_PointerChase/8388608", "label": "L3",   "ns_per_load": 14.0},
+                  {"name": "BM_PointerChase/536870912","label": "DRAM","ns_per_load": 70.0},
+              ]
+          }
+          (pathlib.Path("/tmp/fake_results") / "latency.json").write_text(json.dumps(fake))
+          (pathlib.Path("/tmp/fake_results") / "bandwidth.json").write_text(json.dumps({"benchmarks": []}))
+          (pathlib.Path("/tmp/fake_results") / "flops.json").write_text(json.dumps({"benchmarks": []}))
+          (pathlib.Path("/tmp/fake_results") / "gemm.json").write_text(json.dumps({"benchmarks": []}))
+
+          result = subprocess.run(
+              [sys.executable, "scripts/parse_perf.py", "/tmp/fake_results"],
+              capture_output=True, text=True)
+          print(result.stdout[:500])
+          if result.returncode != 0:
+              print(result.stderr)
+              sys.exit(1)
+          print("parse_perf.py: OK")
+          EOF
+
+      - name: Dry-run tile_predict.py with synthetic summary
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib, subprocess, sys
+
+          summary = {
+              "cpu_model": "Test CPU",
+              "cpu_freq_ghz": 3.6,
+              "latency_ns": {"L1": 1.4, "L2": 4.0, "L3": 14.0, "DRAM": 70.0},
+              "peak_bw_dram_gbs": 48.0, "peak_bw_l3_gbs": 200.0,
+              "peak_bw_l2_gbs": 350.0, "peak_bw_l1_gbs": 800.0,
+              "peak_gflops_sp": 130.0, "gemm_tile_results": [], "kernels": []
+          }
+          p = pathlib.Path("/tmp/fake_results/summary.json")
+          p.write_text(json.dumps(summary))
+          result = subprocess.run(
+              [sys.executable, "scripts/tile_predict.py", str(p)],
+              capture_output=True, text=True)
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr)
+              sys.exit(1)
+          print("tile_predict.py: OK")
+          EOF
+
+      - name: Dry-run roofline.py with synthetic summary (no display)
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib, subprocess, sys
+
+          summary = {
+              "cpu_model": "Test CPU", "cpu_freq_ghz": 3.6,
+              "latency_ns": {"L1": 1.4, "L2": 4.0, "L3": 14.0, "DRAM": 70.0},
+              "peak_bw_dram_gbs": 48.0, "peak_bw_l3_gbs": 200.0,
+              "peak_bw_l2_gbs": 350.0, "peak_bw_l1_gbs": 800.0,
+              "peak_gflops_sp": 130.0, "gemm_tile_results": [], "kernels": []
+          }
+          p = pathlib.Path("/tmp/fake_results/summary.json")
+          p.write_text(json.dumps(summary))
+          result = subprocess.run(
+              [sys.executable, "scripts/roofline.py", str(p),
+               "--output", "/tmp/fake_results"],
+              capture_output=True, text=True)
+          print(result.stdout)
+          if result.returncode != 0:
+              print(result.stderr)
+              sys.exit(1)
+          # Verify output files were created
+          assert (pathlib.Path("/tmp/fake_results") / "roofline.png").exists()
+          print("roofline.py: OK")
+          EOF

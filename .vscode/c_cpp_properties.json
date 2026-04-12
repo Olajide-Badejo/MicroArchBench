@@ -1,0 +1,42 @@
+{
+    "configurations": [
+        {
+            "name": "Linux x86-64 (GCC)",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/build/_deps/googlebenchmark-src/include",
+                "${default}"
+            ],
+            "defines": [
+                "BENCH_HAS_AVX2=1",
+                "BENCH_HAS_PERF=1",
+                "__linux__"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64",
+            // Tell IntelliSense to use the same flags as the build system.
+            // CMake Tools writes compile_commands.json when configured.
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        },
+        {
+            "name": "AArch64 (cross-compile)",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/build-aarch64/_deps/googlebenchmark-src/include",
+                "${default}"
+            ],
+            "defines": [
+                "__aarch64__",
+                "__ARM_NEON",
+                "__linux__"
+            ],
+            "compilerPath": "/usr/bin/aarch64-linux-gnu-g++",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-arm64"
+        }
+    ],
+    "version": 4
+}

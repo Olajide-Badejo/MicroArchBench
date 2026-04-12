@@ -1,0 +1,25 @@
+{
+    "recommendations": [
+        // C/C++ language support and IntelliSense (Microsoft)
+        "ms-vscode.cpptools",
+
+        // clangd language server -- better code navigation and
+        // diagnostic messages when compile_commands.json is present
+        "llvm-vs-code-extensions.vscode-clangd",
+
+        // CMake language support and project integration
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+
+        // Python support for the post-processing scripts
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.pylint",
+
+        // Hex editor -- useful when inspecting memory dumps and perf data files
+        "ms-vscode.hexeditor",
+
+        // Markdown preview for docs/
+        "yzhang.markdown-all-in-one"
+    ]
+}

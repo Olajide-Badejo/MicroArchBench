@@ -1,0 +1,54 @@
+# Build artifacts
+build/
+build-*/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.a
+*.so
+*.o
+
+# Benchmark results (auto-generated; commit only curated samples)
+results/raw/
+results/plots/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Editor and IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Compiled binaries
+pointer_chase
+stream_bench
+peak_flops
+gemm_tile_bench
+test_permutation
+test_stream_verify
+
+# CMake FetchContent cache
+_deps/
+
+# perf output
+perf.data
+perf.data.old
+
+# Temporary files
+*.tmp
+*.log
