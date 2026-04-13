@@ -37,9 +37,6 @@ jobs:
           - compiler: gcc-12
             cc: gcc-12
             cxx: g++-12
-          - compiler: gcc-13
-            cc: gcc-13
-            cxx: g++-13
           - compiler: clang-15
             cc: clang-15
             cxx: clang++-15
@@ -51,18 +48,12 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -q
-          # Install the compiler from the matrix. For clang-15 on Ubuntu 22.04
-          # the package is available in the default repos. For OpenMP on Clang
-          # we also need libomp-dev.
-          sudo apt-get install -y \
-            cmake \
-            ninja-build \
-            libnuma-dev \
-            libomp-dev
-          # Install the compiler; allow failure on clang since some runners
-          # already have a recent clang under a different name.
-          sudo apt-get install -y ${{ matrix.compiler }} || true
-          # Verify the CXX binary resolves
+          # Install common build dependencies.
+          sudo apt-get install -y cmake ninja-build libnuma-dev libomp-dev
+          # Install the exact compiler requested by this matrix entry.
+          sudo apt-get install -y ${{ matrix.compiler }}
+          # Verify that the configured C and C++ compilers resolve.
+          ${{ matrix.cc }} --version
           ${{ matrix.cxx }} --version
 
       - name: Cache FetchContent dependencies
