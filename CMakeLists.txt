@@ -44,7 +44,7 @@ if(BENCHMARK_DOWNLOAD_DEPENDENCIES)
     FetchContent_Declare(
         googlebenchmark
         GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG        v1.8.4
+        GIT_TAG        v1.9.0
     )
     # Build benchmark without its own tests
     set(BENCHMARK_ENABLE_TESTING   OFF CACHE BOOL "" FORCE)
