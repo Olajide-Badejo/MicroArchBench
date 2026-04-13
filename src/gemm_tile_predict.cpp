@@ -50,7 +50,9 @@ static void blocked_sgemm(
                 for (int i = mc; i < mc_end; ++i) {
                     for (int k = kc; k < kc_end; ++k) {
                         const float a_ik = A[i * N + k];
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
                         for (int j = nc; j < nc_end; ++j)
                             C[i * N + j] += a_ik * B[k * N + j];
                     }
@@ -109,9 +111,8 @@ static void BM_BlockedSGEMM(benchmark::State& state) {
     // Compute achieved GFLOPS: 2*N^3 FLOPs (multiply-add pairs)
     const double flops = 2.0 * N * N * N;
     state.counters["GFLOPS"] = benchmark::Counter(
-        flops * static_cast<double>(state.iterations()),
-        benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        flops * static_cast<double>(state.iterations()) / 1.0e9,
+        benchmark::Counter::kIsRate);
 
     // Embed tile sizes in the label for easy parsing
     state.SetLabel("Mc=" + std::to_string(Mc) +

@@ -48,22 +48,30 @@ static void ref_triad(float* c, const float* a, const float* b,
 
 static void vec_copy(float* __restrict__ c, const float* __restrict__ a,
                      std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i) c[i] = a[i];
 }
 static void vec_scale(float* __restrict__ b, const float* __restrict__ a,
                       float s, std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i) b[i] = s * a[i];
 }
 static void vec_add(float* __restrict__ c, const float* __restrict__ a,
                     const float* __restrict__ b, std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i) c[i] = a[i] + b[i];
 }
 static void vec_triad(float* __restrict__ c, const float* __restrict__ a,
                       const float* __restrict__ b, float s, std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i) c[i] = a[i] + s * b[i];
 }
 

@@ -150,7 +150,9 @@ static void scalar_triad(float* __restrict__ c,
 static void vec_copy(float* __restrict__ c,
                      const float* __restrict__ a,
                      std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i)
         c[i] = a[i];
     ClobberMemory();
@@ -159,7 +161,9 @@ static void vec_copy(float* __restrict__ c,
 static void vec_scale(float* __restrict__ b,
                       const float* __restrict__ a,
                       float s, std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i)
         b[i] = s * a[i];
     ClobberMemory();
@@ -169,7 +173,9 @@ static void vec_add(float* __restrict__ c,
                     const float* __restrict__ a,
                     const float* __restrict__ b,
                     std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i)
         c[i] = a[i] + b[i];
     ClobberMemory();
@@ -179,7 +185,9 @@ static void vec_triad(float* __restrict__ c,
                       const float* __restrict__ a,
                       const float* __restrict__ b,
                       float s, std::size_t n) {
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC ivdep
+#endif
     for (std::size_t i = 0; i < n; ++i)
         c[i] = a[i] + s * b[i];
     ClobberMemory();
@@ -276,8 +284,7 @@ static void record_bw(benchmark::State& state, std::size_t n, int streams) {
                          static_cast<double>(n) *
                          static_cast<double>(streams) * sizeof(float);
     state.counters["BW_GB_s"] = benchmark::Counter(
-        bytes, benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        bytes / 1.0e9, benchmark::Counter::kIsRate);
 }
 
 // ---- Scalar baselines (auto-vectorisation disabled) ----
@@ -468,8 +475,7 @@ static void BM_Triad_MT_Scaling(benchmark::State& state) {
     const double bytes = static_cast<double>(state.iterations()) *
                          static_cast<double>(n) * 3 * sizeof(float);
     state.counters["BW_GB_s"] = benchmark::Counter(
-        bytes, benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        bytes / 1.0e9, benchmark::Counter::kIsRate);
     state.counters["threads"] = static_cast<double>(n_threads);
 
     free(a); free(b); free(c);

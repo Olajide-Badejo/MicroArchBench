@@ -82,9 +82,8 @@ static void BM_PeakFLOPS_AVX2_SP(benchmark::State& state) {
     }
 
     state.counters["GFLOPS"] = benchmark::Counter(
-        static_cast<double>(total_flops),
-        benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        static_cast<double>(total_flops) / 1.0e9,
+        benchmark::Counter::kIsRate);
 }
 
 // Double precision variant (DP)
@@ -123,9 +122,8 @@ static void BM_PeakFLOPS_AVX2_DP(benchmark::State& state) {
     }
 
     state.counters["GFLOPS"] = benchmark::Counter(
-        static_cast<double>(total_flops),
-        benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        static_cast<double>(total_flops) / 1.0e9,
+        benchmark::Counter::kIsRate);
 }
 
 // Register with several rep counts to average over different loop-body counts
@@ -183,9 +181,8 @@ static void BM_PeakFLOPS_NEON_SP(benchmark::State& state) {
     }
 
     state.counters["GFLOPS"] = benchmark::Counter(
-        static_cast<double>(total_flops),
-        benchmark::Counter::kIsRate,
-        benchmark::Counter::kIs1000000000);
+        static_cast<double>(total_flops) / 1.0e9,
+        benchmark::Counter::kIsRate);
 }
 
 BENCHMARK(BM_PeakFLOPS_NEON_SP)

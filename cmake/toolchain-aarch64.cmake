@@ -39,6 +39,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 # add_compile_options() in a toolchain file runs before the compiler is
 # probed and can corrupt the CMake try_compile checks.
 # -mcpu=cortex-a72 targets the RPi4; change for other boards (e.g. cortex-a55).
-set(ARCH_FLAGS "-mcpu=cortex-a72 -mfpu=neon-fp-armv8 -mfloat-abi=hard")
+# On AArch64, NEON and hard-float ABI are always enabled; no extra flags needed.
+set(ARCH_FLAGS "-mcpu=cortex-a72")
 set(CMAKE_C_FLAGS_INIT   "${ARCH_FLAGS}")
 set(CMAKE_CXX_FLAGS_INIT "${ARCH_FLAGS}")
